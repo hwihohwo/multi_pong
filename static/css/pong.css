@@ -1,0 +1,32 @@
+* {
+	outline: none;
+	margin: 0;
+}
+
+body {
+	overflow: hidden;
+}
+
+#webgl-container {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+
+#p1-score {
+	position: absolute;
+	top: 10%;
+	left: 20%;
+	width: 10%;
+	height: 10%;
+}
+
+#p2-score {
+	position: absolute;
+	top: 10%;
+	left: 80%;
+	width: 10%;
+	height: 10%;
+}

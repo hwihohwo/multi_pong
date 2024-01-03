@@ -1,0 +1,24 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="{% static 'css/pong.css' %}">
+		<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+					"three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+				}
+			}
+		</script>
+	</head>
+	<body style="font-size: 30px;">
+		<script type="module" src="{% static 'javascript/pong.js' %}" defer></script>
+		<div id="webgl-container"></div>
+		<div id="p1-score"></div>
+		<div id="p2-score"></div>
+	</body>
+</html>
