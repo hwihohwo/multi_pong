@@ -1,0 +1,11 @@
+Model Information:
+* title:	Pika
+* source:	https://sketchfab.com/3d-models/pika-4abf0b10596544e7bed789c58f809897
+* author:	virums (https://sketchfab.com/virums)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Pika" (https://sketchfab.com/3d-models/pika-4abf0b10596544e7bed789c58f809897) by virums (https://sketchfab.com/virums) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

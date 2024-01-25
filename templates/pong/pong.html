@@ -16,6 +16,11 @@
 		</script>
 	</head>
 	<body style="font-size: 30px;">
+		<script>
+			const MODEL_PATH = "{% static 'models/pika/scene.gltf' %}";
+			const BALL_PATH = "{% static 'images/poketball_square.png' %}";
+			const GROUND_PATH = "{% static 'images/ground.jpg' %}"
+		</script>
 		<script type="module" src="{% static 'javascript/pong.js' %}" defer></script>
 		<div id="webgl-container"></div>
 		<div id="p1-score"></div>

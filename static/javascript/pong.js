@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-// import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 class App {
 	constructor() {
@@ -30,32 +31,21 @@ class App {
 		this._setupCamera();
 		this._setupLight();
 		this._setupModel();
-		// this._setupControls();
+		this._setupControls();
 		this._setupKeyboardControls();
 		this._setupSocket();
 
 		window.onresize = this.resize.bind(this);
 		//window.onresize -> 창크기 변경시 발생하는 메서드
 		this.resize(); //renderer와 camera의 속성을 창크기에 맞게 설정해주기 위함.
-
-		// this._sendKeydownDataDebounced = this._debounce(this._sendKeydownData, 30);
-
-		// this.lastUpdateTime = 0;
-		// this.desiredFPS = 60;  // 원하는 FPS 설정
-		// this.frameInterval = 1000 / this.desiredFPS;  // 프레임 간격(ms)
-
+		this._sleep(0.4);
 		requestAnimationFrame(this.render.bind(this));
 	}
 
-	_debounce(func, delay) {
-		let debounceTimer;
-		return function(...args) {
-			const context = this;
-			clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => func.apply(context, args), delay);
-		};
+	_setupControls() {
+		new OrbitControls(this._camera, this._divContainer);
 	}
-	
+
 
 	_sleep(sec) {
 		let start = Date.now(), now = start;
@@ -76,13 +66,19 @@ class App {
 			const data = JSON.parse(event.data);
 
 			if (data.type == 'disconnect_message') {
-				this._socket.send(JSON.stringify({
-					'type': 'disconnect'
-				}))
+				this._socket.close();
 			}
 
 			else if (data.type == 'player_num') {
 				this._player_num = data.player_num;
+				if (this._player_num == 1) {
+					this._camera.position.set(-3.0, 2, 0);
+					this._camera.lookAt(0, -1, 0);
+				}
+				else if (this._player_num == 2) {
+					this._camera.position.set(3.0, 2, 0);
+					this._camera.lookAt(0, -1, 0);
+				}
 			}
 
 			else if (data.type == 'positions') {
@@ -91,17 +87,20 @@ class App {
 				this._cube_2.position.set(data.p2_bar_position[0], data.p2_bar_position[1], data.p2_bar_position[2]);
 			}
 
-			// else if (data.type == 'sphere_position') {
-			// 	this._sphere.position.set(data.sphere_position[0], data.sphere_position[1], data.sphere_position[2]);
-			// }
+			else if (data.type == 'scores') {
+				this._p1score = data.player_1_score;
+				this._p2score = data.player_2_score;
+			}
 
-			// else if (data.type == 'p1_bar_position') {
-			// 	this._cube_1.position.set(data.p1_bar_position[0], data.p1_bar_position[1], data.p1_bar_position[2]);
-			// }
+			else if (data.type == 'game_over') {
+				console.log("player " + data.winner + " win!");
+				this._socket.close();
+			}
 
-			// else if (data.type == 'p2_bar_position') {
-			// 	this._cube_2.position.set(data.p2_bar_position[0], data.p2_bar_position[1], data.p2_bar_position[2]);
-			// }
+			else if (data.type == 'game_over_disconnected') {
+				console.log("Opponent disconnected! You win!");
+				this._socket.close();
+			}
 		}.bind(this)
 
 		socket.onclose = function(event) {
@@ -116,26 +115,13 @@ class App {
 		this._keyboardState = keyboardState;
 
 		document.addEventListener('keydown', (event) => {
-			// this._socket.send(JSON.stringify({
-			// 	'type': 'keydown',
-			// 	'keycode': event.code,
-			// 	'player_num': this._player_num
-			// }))
 			keyboardState[event.code] = true;
 		});
 		document.addEventListener('keyup', (event) => {
-			// this._socket.send(JSON.stringify({
-			// 	'type': 'keyup',
-			// 	'keycode': event.code,
-			// 	'player_num': this._player_num
-			// }))
 			keyboardState[event.code] = false;
 		});
 	}
 
-	// _setupControls() {
-	// 	new OrbitControls(this._camera, this._divContainer);
-	// }
 
 	_setupCamera() {
 		const width = this._divContainer.clientWidth;
@@ -175,30 +161,46 @@ class App {
 	}
 
 	_setupGround() {
-		const UpperPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1.5);
-		const LowerPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1.5);
-		const RightSidePlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 3);
-		const LeftSidePlane = new THREE.Plane(new THREE.Vector3(1, 0, 0), 3);
+		// const UpperPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), -3.0);
+		// const LowerPlane = new THREE.Plane(new THREE.Vector3(1, 0, 0), -3.0);
+		// const RightSidePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -2.5);
+		// const LeftSidePlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), -2.5);
 
-		this._UpperPlane = UpperPlane;
-		this._LowerPlane = LowerPlane;
-		this._RightSidePlane = RightSidePlane;
-		this._LeftSidePlane = LeftSidePlane;
+		// this._UpperPlane = UpperPlane;
+		// this._LowerPlane = LowerPlane;
+		// this._RightSidePlane = RightSidePlane;
+		// this._LeftSidePlane = LeftSidePlane;
 
-		const UpperPlaneHelper = new THREE.PlaneHelper( UpperPlane, 6, 0xff0000 );
-		this._scene.add( UpperPlaneHelper );
-		const LowerPlaneHelper = new THREE.PlaneHelper( LowerPlane, 6, 0xffff00 );
-		this._scene.add( LowerPlaneHelper );
-		const RightSidePlaneHelper = new THREE.PlaneHelper( RightSidePlane, 3, 0x0000ff );
-		this._scene.add( RightSidePlaneHelper );
-		const LeftSidePlaneHelper = new THREE.PlaneHelper( LeftSidePlane, 3, 0xffffff );
-		this._scene.add( LeftSidePlaneHelper );
+		// const UpperPlaneHelper = new THREE.PlaneHelper( UpperPlane, 6, 0xff0000 );
+		// this._scene.add( UpperPlaneHelper );
+		// const LowerPlaneHelper = new THREE.PlaneHelper( LowerPlane, 6, 0xffff00 );
+		// this._scene.add( LowerPlaneHelper );
+		// const RightSidePlaneHelper = new THREE.PlaneHelper( RightSidePlane, 3, 0x0000ff );
+		// this._scene.add( RightSidePlaneHelper );
+		// const LeftSidePlaneHelper = new THREE.PlaneHelper( LeftSidePlane, 3, 0xffffff );
+		// this._scene.add( LeftSidePlaneHelper );
+
+
+		const loader = new THREE.TextureLoader();
+		loader.load(GROUND_PATH, (texture) => {
+			texture.encoding = THREE.sRGBEncoding;
+			const material = new THREE.MeshBasicMaterial({
+				map: texture,
+				side: THREE.DoubleSide,
+			});
+			const geometry = new THREE.PlaneGeometry( 5, 6 );
+			const BottomPlane = new THREE.Mesh( geometry, material );
+			BottomPlane.rotation.x = Math.PI / 2;
+			BottomPlane.position.y = -0.1;		
+			this._scene.add(BottomPlane);
+			this._BottomPlane = BottomPlane;
+		});
 	}
 
 	_setupModel() {
 		this._setupGround();
 
-		const Boxgeometry = new THREE.BoxGeometry(0.08, 0.7, 0.1); // 인자 : 가로, 세로, 깊이
+		const Boxgeometry = new THREE.BoxGeometry(0.1, 0.08, 0.7); // 인자 : 가로, 세로, 깊이
 		const Boxmaterial_1 = new THREE.MeshStandardMaterial({
 			color: 0xff0000});
 		const Boxmaterial_2 = new THREE.MeshStandardMaterial({
@@ -210,33 +212,44 @@ class App {
 		const cube_2 = new THREE.Mesh(Boxgeometry, Boxmaterial_2);
 		cube_2.position.x = -2.5;
 
-		cube_1.geometry.computeBoundingBox();
-		cube_2.geometry.computeBoundingBox(); //static geometry일 경우 한번만 계산.
-
-		const BBcube_1 = new THREE.Box3();
-		const BBcube_2 = new THREE.Box3();
-
-		this._BBcube_1 = BBcube_1;
-		this._BBcube_2 = BBcube_2;
-
 		this._scene.add(cube_2);
 		this._scene.add(cube_1);
 		this._cube_1 = cube_1;
 		this._cube_2 = cube_2;
 
-		const Spheregeometry = new THREE.SphereGeometry(0.04, 32, 32);
-		const Spherematerial = new THREE.MeshStandardMaterial({
-			color: 0xffffff});
+		// let loader = new GLTFLoader();
+		// loader.load(MODEL_PATH, (gltf) => {
+		// 	const model_1 = gltf.scene;
+		// 	const model_2 = gltf.scene.clone();
+		// 	model_1.scale.set(0.1, 0.1, 0.1);
+		// 	model_1.position.x = -2.5;
+		// 	// model_1.rotation.x = Math.PI / 2;
+		// 	model_2.scale.set(0.1, 0.1, 0.1);
+		// 	model_2.position.x = 2.5;
+		// 	// model_2.rotation.x = Math.PI / 2;
+		// 	// model_2.rotation.y = Math.PI;
+		// 	this._scene.add(model_1);
+		// 	this._scene.add(model_2);
+		// 	this._cube_1 = model_1;
+		// 	this._cube_2 = model_2;
+		// });
 
-		const sphere = new THREE.Mesh(Spheregeometry, Spherematerial);
-		this._scene.add(sphere);
-		this._sphere = sphere;
+		const loader = new THREE.TextureLoader();
+		loader.load(BALL_PATH, (texture) => {
+			texture.encoding = THREE.sRGBEncoding;
+			const Spherematerial = new THREE.MeshBasicMaterial({
+				map: texture,
+			});
+			const Spheregeometry = new THREE.SphereGeometry(0.04, 32, 32);
+			const sphere = new THREE.Mesh(Spheregeometry, Spherematerial);
+			this._scene.add(sphere);
+			this._sphere = sphere;
+		});
 
-		this._sphere_speed = 0;
-		this._sphere_direction = new THREE.Vector3();
+		this._rotation_speed = 0.05;
 
-		const _BBsphere = new THREE.Sphere(sphere.position, 0.04);
-		this._BBsphere = _BBsphere;
+		// const Spherematerial = new THREE.MeshStandardMaterial({
+		// 	color: 0xffffff});
 	}
 
 	resize() { 
@@ -250,122 +263,55 @@ class App {
 	}
 
 	render(time) {
-   		// exit game
-   		// if (this._p1score == 10 || this._p2score == 10)
-   		//     return;
    		this._renderer.render(this._scene, this._camera);
 		this.update(time);
    		requestAnimationFrame(this.render.bind(this));
 	}
 
 	_CheckKeyboardInput() {
-		if (this._keyboardState['ArrowUp']) {
-			this._socket.send(JSON.stringify({
-				'type': 'keydown',
-				'keycode': 'ArrowUp',
-				'player_num': this._player_num
-			}))
+		if (this._keyboardState['ArrowRight']) {
+			if (this._player_num == 1) {
+				this._socket.send(JSON.stringify({
+					'type': 'keydown',
+					'keycode': 'ArrowRight',
+					'player_num': this._player_num
+				}))
+			}
+			else {
+				this._socket.send(JSON.stringify({
+					'type': 'keydown',
+					'keycode': 'ArrowLeft',
+					'player_num': this._player_num
+				}))
+			}
 		}
-		if (this._keyboardState['ArrowDown']) {
-			this._socket.send(JSON.stringify({
-				'type': 'keydown',
-				'keycode': 'ArrowDown',
-				'player_num': this._player_num
-			}))
+		if (this._keyboardState['ArrowLeft']) {
+			if (this._player_num == 1) {
+				this._socket.send(JSON.stringify({
+					'type': 'keydown',
+					'keycode': 'ArrowLeft',
+					'player_num': this._player_num
+				}))
+			}
+			else {
+				this._socket.send(JSON.stringify({
+					'type': 'keydown',
+					'keycode': 'ArrowRight',
+					'player_num': this._player_num
+				}))
+			}
 		}
-	}
-
-	// keydown : 1, keyup : 2
-	// ArrowUp : 2 , ArrowDown : 1
-
-	// _CheckKeyboardInput() {
-	// 	if (this._keyboardState['ArrowUp']) {
-	// 		this._sendKeydownDataDebounced('ArrowUp');
-	// 	}
-	// 	if (this._keyboardState['ArrowDown']) {
-	// 		this._sendKeydownDataDebounced('ArrowDown');
-	// 	}
-	// }
-	
-	// _sendKeydownData(keycode) {
-	// 	this._socket.send(JSON.stringify({
-	// 		'type': 'keydown',
-	// 		'keycode': keycode,
-	// 		'player_num': this._player_num
-	// 	}));
-	// }
-
-	// _CheckBallCollision() {
-	// 	if (this._BBsphere.intersectsPlane(this._UpperPlane) && this._is_host == 0) {
-	// 		// this._BallHitPlane(this._UpperPlane);
-	// 		this._socket.send(JSON.stringify({
-	// 			'type': 'hit_plane',
-	// 			'x': this._UpperPlane.normal.x,
-	// 			'y': this._UpperPlane.normal.y,
-	// 			'z': this._UpperPlane.normal.z
-	// 		}))
-	// 	}
-	// 	if (this._BBsphere.intersectsPlane(this._LowerPlane) && this._is_host == 0) {
-	// 		// this._BallHitPlane(this._LowerPlane);
-	// 		this._socket.send(JSON.stringify({
-	// 			'type': 'hit_plane',
-	// 			'x': this._LowerPlane.normal.x,
-	// 			'y': this._LowerPlane.normal.y,
-	// 			'z': this._LowerPlane.normal.z
-	// 		}))
-	// 	}
-	// 	if (this._BBsphere.intersectsPlane(this._RightSidePlane) && this._is_host == 0) {
-	// 		// this._sphere.position.set(0, 0, 0);
-	// 		// this._p1score += 1;
-	// 		// // this._sleep(1.5);
-	// 		this._socket.send(JSON.stringify({
-	// 			'type': 'hit_side_plane',
-	// 			'side': 'right',
-	// 		}))
-	// 	}
-	// 	if (this._BBsphere.intersectsPlane(this._LeftSidePlane) && this._is_host == 0) {
-	// 		// this._sphere.position.set(0, 0, 0);
-	// 		// this._p2score += 1;
-	// 		// // this._sleep(1.5);
-	// 		this._socket.send(JSON.stringify({
-	// 			'type': 'hit_side_plane',
-	// 			'side': 'left',
-	// 		}))
-	// 	}
-	// 	if (this._BBsphere.intersectsBox(this._BBcube_1)) {
-	// 		this._BallHitBox(new THREE.Vector3(-1, 0, 0), this._cube_1.position);
-	// 	}
-	// 	if (this._BBsphere.intersectsBox(this._BBcube_2)) {
-	// 		this._BallHitBox(new THREE.Vector3(1, 0, 0), this._cube_2.position);
-	// 	}
-	// }
-
-	_BallHitPlane( plane ) {
-		let dot_product = this._sphere_direction.dot(plane.normal.normalize());
-		if (dot_product < 0) dot_product = dot_product * -1;
-		const tmp_vector = new THREE.Vector3();
-		tmp_vector.copy(this._sphere_direction);
-		tmp_vector.addScaledVector(plane.normal.normalize(), dot_product).multiplyScalar(2);
-		tmp_vector.sub(this._sphere_direction).normalize();
-		this._sphere_direction.copy(tmp_vector);
-	}
-
-	_BallHitBox( normal, position ) {
-		const tmp_vector = new THREE.Vector3();
-		tmp_vector.subVectors(this._sphere.position, position).add(normal);
-		this._sphere_direction.copy(tmp_vector).normalize();
 	}
 
 	update( time ) {
 		this._CheckKeyboardInput();
 
-		// this._BBcube_1.copy(this._cube_1.geometry.boundingBox).applyMatrix4(this._cube_1.matrixWorld);
-		// this._BBcube_2.copy(this._cube_2.geometry.boundingBox).applyMatrix4(this._cube_2.matrixWorld);
-		// this._BBsphere.applyMatrix4(this._sphere.matrixWorld);
+		if (this._sphere) {
+			this._sphere.rotation.y += this._rotation_speed;
+			this._sphere.rotation.x += this._rotation_speed;
+			this._sphere.rotation.z += this._rotation_speed;
+		}
 
-		// this._sphere.position.addScaledVector(this._sphere_direction, this._sphere_speed);
-
-		// this._CheckBallCollision();
 		this._div_p1score.innerHTML = "P1 Score : " + this._p1score;
 		this._div_p2score.innerHTML = "P2 Score : " + this._p2score;
 	}
