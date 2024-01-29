@@ -1,0 +1,11 @@
+Model Information:
+* title:	025 - Pikachu
+* source:	https://sketchfab.com/3d-models/025-pikachu-e69fbccccf1449acb0d9328ac9bea79d
+* author:	Frédéric Cambon (https://sketchfab.com/tribble42)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "025 - Pikachu" (https://sketchfab.com/3d-models/025-pikachu-e69fbccccf1449acb0d9328ac9bea79d) by Frédéric Cambon (https://sketchfab.com/tribble42) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

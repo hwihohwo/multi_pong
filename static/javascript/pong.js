@@ -16,7 +16,6 @@ class App {
 		this._renderer = renderer;
 
 		const scene = new THREE.Scene();
-		scene.background = new THREE.Color(0x87ceeb);
 		this._scene = scene;
 
 		this._p1score = 0;
@@ -28,6 +27,7 @@ class App {
 		this._div_p1score = div_p1score;
 		this._div_p2score = div_p2score;
 
+		this._setupBackground();
 		this._setupCamera();
 		this._setupLight();
 		this._setupModel();
@@ -38,7 +38,6 @@ class App {
 		window.onresize = this.resize.bind(this);
 		//window.onresize -> 창크기 변경시 발생하는 메서드
 		this.resize(); //renderer와 camera의 속성을 창크기에 맞게 설정해주기 위함.
-		this._sleep(0.4);
 		requestAnimationFrame(this.render.bind(this));
 	}
 
@@ -46,6 +45,16 @@ class App {
 		new OrbitControls(this._camera, this._divContainer);
 	}
 
+	_setupBackground() {
+		const loader = new THREE.TextureLoader();
+
+		loader.load(
+	    	WAVE_PATH,
+	    	(texture) => {
+	        	this._scene.background = texture;
+	    	},
+		);
+	}
 
 	_sleep(sec) {
 		let start = Date.now(), now = start;
@@ -61,48 +70,35 @@ class App {
 		socket.onopen = function(event) {
 			console.log('WebSocket이 열렸습니다.');
 		}
-		
+
 		socket.onmessage = function(event) {
 			const data = JSON.parse(event.data);
-
-			if (data.type == 'disconnect_message') {
-				this._socket.close();
-			}
-
-			else if (data.type == 'player_num') {
-				this._player_num = data.player_num;
-				if (this._player_num == 1) {
-					this._camera.position.set(-3.0, 2, 0);
+			switch (data.type) {
+				case 'game_over_disconnected':
+					if (data.detail === 'game_over') {
+						console.log("player " + data.winner + " win!");
+					} else if (data.detail === 'game_over_disconnected') {
+						console.log("Opponent disconnected! " + "player " + data.winner + " win!");
+					}
+					this._socket.close();
+					break;
+				case 'player_num':
+					this._player_num = data.player_num;
+					this._camera.position.set((this._player_num === 1) ? -3.0 : 3.0, 2, 0);
 					this._camera.lookAt(0, -1, 0);
-				}
-				else if (this._player_num == 2) {
-					this._camera.position.set(3.0, 2, 0);
-					this._camera.lookAt(0, -1, 0);
-				}
+					break;
+				case 'positions':
+					this._sphere.position.set(...data.sphere_position);
+					this._cube_1.position.set(...data.p1_bar_position);
+					this._cube_2.position.set(...data.p2_bar_position);
+					break;
+				case 'scores':
+					this._p1score = data.player_1_score;
+					this._p2score = data.player_2_score;
+					break;
 			}
-
-			else if (data.type == 'positions') {
-				this._sphere.position.set(data.sphere_position[0], data.sphere_position[1], data.sphere_position[2]);
-				this._cube_1.position.set(data.p1_bar_position[0], data.p1_bar_position[1], data.p1_bar_position[2]);
-				this._cube_2.position.set(data.p2_bar_position[0], data.p2_bar_position[1], data.p2_bar_position[2]);
-			}
-
-			else if (data.type == 'scores') {
-				this._p1score = data.player_1_score;
-				this._p2score = data.player_2_score;
-			}
-
-			else if (data.type == 'game_over') {
-				console.log("player " + data.winner + " win!");
-				this._socket.close();
-			}
-
-			else if (data.type == 'game_over_disconnected') {
-				console.log("Opponent disconnected! You win!");
-				this._socket.close();
-			}
-		}.bind(this)
-
+		}.bind(this);
+		
 		socket.onclose = function(event) {
 			console.log('WebSocket이 닫혔습니다.');
 		}
@@ -121,7 +117,6 @@ class App {
 			keyboardState[event.code] = false;
 		});
 	}
-
 
 	_setupCamera() {
 		const width = this._divContainer.clientWidth;
@@ -180,7 +175,6 @@ class App {
 		// const LeftSidePlaneHelper = new THREE.PlaneHelper( LeftSidePlane, 3, 0xffffff );
 		// this._scene.add( LeftSidePlaneHelper );
 
-
 		const loader = new THREE.TextureLoader();
 		loader.load(GROUND_PATH, (texture) => {
 			texture.encoding = THREE.sRGBEncoding;
@@ -200,43 +194,43 @@ class App {
 	_setupModel() {
 		this._setupGround();
 
-		const Boxgeometry = new THREE.BoxGeometry(0.1, 0.08, 0.7); // 인자 : 가로, 세로, 깊이
-		const Boxmaterial_1 = new THREE.MeshStandardMaterial({
-			color: 0xff0000});
-		const Boxmaterial_2 = new THREE.MeshStandardMaterial({
-				color: 0x00ff00});
+		// const Boxgeometry = new THREE.BoxGeometry(0.1, 0.08, 0.7); // 인자 : 가로, 세로, 깊이
+		// const Boxmaterial_1 = new THREE.MeshStandardMaterial({
+		// 	color: 0xff0000});
+		// const Boxmaterial_2 = new THREE.MeshStandardMaterial({
+		// 		color: 0x00ff00});
 
-		const cube_1 = new THREE.Mesh(Boxgeometry, Boxmaterial_1);
-		cube_1.position.x = 2.5;
+		// const cube_1 = new THREE.Mesh(Boxgeometry, Boxmaterial_1);
+		// cube_1.position.x = 2.5;
 
-		const cube_2 = new THREE.Mesh(Boxgeometry, Boxmaterial_2);
-		cube_2.position.x = -2.5;
+		// const cube_2 = new THREE.Mesh(Boxgeometry, Boxmaterial_2);
+		// cube_2.position.x = -2.5;
 
-		this._scene.add(cube_2);
-		this._scene.add(cube_1);
-		this._cube_1 = cube_1;
-		this._cube_2 = cube_2;
+		// this._scene.add(cube_2);
+		// this._scene.add(cube_1);
+		// this._cube_1 = cube_1;
+		// this._cube_2 = cube_2;
 
-		// let loader = new GLTFLoader();
-		// loader.load(MODEL_PATH, (gltf) => {
-		// 	const model_1 = gltf.scene;
-		// 	const model_2 = gltf.scene.clone();
-		// 	model_1.scale.set(0.1, 0.1, 0.1);
-		// 	model_1.position.x = -2.5;
-		// 	// model_1.rotation.x = Math.PI / 2;
-		// 	model_2.scale.set(0.1, 0.1, 0.1);
-		// 	model_2.position.x = 2.5;
-		// 	// model_2.rotation.x = Math.PI / 2;
-		// 	// model_2.rotation.y = Math.PI;
-		// 	this._scene.add(model_1);
-		// 	this._scene.add(model_2);
-		// 	this._cube_1 = model_1;
-		// 	this._cube_2 = model_2;
-		// });
+		let loader = new GLTFLoader();
+		loader.load(MODEL_PATH, (gltf) => {
+			const model_1 = gltf.scene;
+			const model_2 = gltf.scene.clone();
+			model_1.scale.set(0.1, 0.1, 0.1);
+			model_1.position.x = -2.5;
+			model_1.rotation.y = Math.PI / 2;
+			model_2.scale.set(0.1, 0.1, 0.1);
+			model_2.position.x = 2.5;
+			model_2.rotation.y = -Math.PI / 2;
+			// model_2.rotation.y = Math.PI;
+			this._scene.add(model_1);
+			this._scene.add(model_2);
+			this._cube_1 = model_1;
+			this._cube_2 = model_2;
+		});
 
-		const loader = new THREE.TextureLoader();
+		loader = new THREE.TextureLoader();
 		loader.load(BALL_PATH, (texture) => {
-			texture.encoding = THREE.sRGBEncoding;
+			// texture.encoding = THREE.sRGBEncoding;
 			const Spherematerial = new THREE.MeshBasicMaterial({
 				map: texture,
 			});
@@ -269,46 +263,27 @@ class App {
 	}
 
 	_CheckKeyboardInput() {
-		if (this._keyboardState['ArrowRight']) {
-			if (this._player_num == 1) {
+		const keyMapping = this._player_num === 1 ? 
+			{ 'ArrowRight': 'ArrowRight', 'ArrowLeft': 'ArrowLeft' } : 
+			{ 'ArrowRight': 'ArrowLeft', 'ArrowLeft': 'ArrowRight' };
+	
+		['ArrowRight', 'ArrowLeft'].forEach((key) => {
+			if (this._socket.readyState === WebSocket.OPEN && this._keyboardState[key]) {
 				this._socket.send(JSON.stringify({
 					'type': 'keydown',
-					'keycode': 'ArrowRight',
+					'keycode': keyMapping[key],
 					'player_num': this._player_num
-				}))
+				}));
 			}
-			else {
-				this._socket.send(JSON.stringify({
-					'type': 'keydown',
-					'keycode': 'ArrowLeft',
-					'player_num': this._player_num
-				}))
-			}
-		}
-		if (this._keyboardState['ArrowLeft']) {
-			if (this._player_num == 1) {
-				this._socket.send(JSON.stringify({
-					'type': 'keydown',
-					'keycode': 'ArrowLeft',
-					'player_num': this._player_num
-				}))
-			}
-			else {
-				this._socket.send(JSON.stringify({
-					'type': 'keydown',
-					'keycode': 'ArrowRight',
-					'player_num': this._player_num
-				}))
-			}
-		}
+		});
 	}
-
+	
 	update( time ) {
 		this._CheckKeyboardInput();
 
 		if (this._sphere) {
-			this._sphere.rotation.y += this._rotation_speed;
 			this._sphere.rotation.x += this._rotation_speed;
+			this._sphere.rotation.y += this._rotation_speed;
 			this._sphere.rotation.z += this._rotation_speed;
 		}
 

@@ -11,6 +11,8 @@ class PongConsumer(AsyncWebsocketConsumer):
 	groups_info = {}
 	max_group_size = 2
 
+	end_score = 10
+
 	sphere_radius = 0.04
 	sphere_initial_speed = 0.03
 	sphere_max_speed = 0.06
@@ -38,13 +40,15 @@ class PongConsumer(AsyncWebsocketConsumer):
 				return group_name
 		new_group_name = f"group_{len(PongConsumer.groups) + 1}"
 		await PongConsumer.channel_layer.group_add(PongConsumer.channel_group, channel_name)
-		PongConsumer.groups[new_group_name] = [channel_name]	
+		PongConsumer.groups[new_group_name] = [channel_name]
 		return new_group_name
 
 	async def initialize_group(self):
 		tmp_vector = np.array([1.0, 0.0, 1.0])
 		sphere_direction = tmp_vector / np.linalg.norm(tmp_vector)
 		PongConsumer.groups_info[self.my_group] = {
+			'task': None,
+
 			'sphere_direction': [sphere_direction[0], sphere_direction[1], sphere_direction[2]],
 
 			'sphere_position': [0.0, 0.0, 0.0],
@@ -163,6 +167,12 @@ class PongConsumer(AsyncWebsocketConsumer):
 		PongConsumer.groups_info[self.my_group]['sphere_position'][0] += PongConsumer.groups_info[self.my_group]['sphere_direction'][0] * PongConsumer.groups_info[self.my_group]['sphere_speed']
 		PongConsumer.groups_info[self.my_group]['sphere_position'][1] += PongConsumer.groups_info[self.my_group]['sphere_direction'][1] * PongConsumer.groups_info[self.my_group]['sphere_speed']
 		PongConsumer.groups_info[self.my_group]['sphere_position'][2] += PongConsumer.groups_info[self.my_group]['sphere_direction'][2] * PongConsumer.groups_info[self.my_group]['sphere_speed']
+		PongConsumer.groups_info[self.my_group]['sphere_bounding_box']['x_min'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][0] * PongConsumer.groups_info[self.my_group]['sphere_speed']
+		PongConsumer.groups_info[self.my_group]['sphere_bounding_box']['x_max'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][0] * PongConsumer.groups_info[self.my_group]['sphere_speed']
+		PongConsumer.groups_info[self.my_group]['sphere_bounding_box']['y_min'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][1] * PongConsumer.groups_info[self.my_group]['sphere_speed']
+		PongConsumer.groups_info[self.my_group]['sphere_bounding_box']['y_max'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][1] * PongConsumer.groups_info[self.my_group]['sphere_speed']
+		PongConsumer.groups_info[self.my_group]['sphere_bounding_box']['z_min'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][2] * PongConsumer.groups_info[self.my_group]['sphere_speed']
+		PongConsumer.groups_info[self.my_group]['sphere_bounding_box']['z_max'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][2] * PongConsumer.groups_info[self.my_group]['sphere_speed']
 
 	async def initialize_sphere(self):
 		PongConsumer.groups_info[self.my_group]['sphere_position'][0] = 0.0
@@ -191,12 +201,13 @@ class PongConsumer(AsyncWebsocketConsumer):
 					'player_2_score': PongConsumer.groups_info[self.my_group]['player_2_score'],
 				}
 			)
-			if PongConsumer.groups_info[self.my_group]['player_2_score'] == 10:
+			if PongConsumer.groups_info[self.my_group]['player_2_score'] >= PongConsumer.end_score:
 				await PongConsumer.channel_layer.group_send(
 					PongConsumer.channel_group,
 					{
-						'type': 'send_game_over',
+						'type': 'send_game_over_disconnected',
 						'users': PongConsumer.groups[self.my_group],
+						'detail': 'game_over',
 						'winner': 2
 					}
 				)
@@ -214,12 +225,13 @@ class PongConsumer(AsyncWebsocketConsumer):
 					'player_2_score': PongConsumer.groups_info[self.my_group]['player_2_score'],
 				}
 			)
-			if PongConsumer.groups_info[self.my_group]['player_1_score'] == 10:
+			if PongConsumer.groups_info[self.my_group]['player_1_score'] >= PongConsumer.end_score:
 				await PongConsumer.channel_layer.group_send(
 					PongConsumer.channel_group,
 					{
-						'type': 'send_game_over',
+						'type': 'send_game_over_disconnected',
 						'users': PongConsumer.groups[self.my_group],
+						'detail': 'game_over',
 						'winner': 1
 					}
 				)
@@ -245,22 +257,10 @@ class PongConsumer(AsyncWebsocketConsumer):
 		box_coordinates['z_min'] += speed
 		box_coordinates['z_max'] += speed
 
-	async def moving_sphere_bounding_box(self, box_coordinates):
-		box_coordinates['x_min'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][0] * PongConsumer.groups_info[self.my_group]['sphere_speed']
-		box_coordinates['x_max'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][0] * PongConsumer.groups_info[self.my_group]['sphere_speed']
-		box_coordinates['y_min'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][1] * PongConsumer.groups_info[self.my_group]['sphere_speed']
-		box_coordinates['y_max'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][1] * PongConsumer.groups_info[self.my_group]['sphere_speed']
-		box_coordinates['z_min'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][2] * PongConsumer.groups_info[self.my_group]['sphere_speed']
-		box_coordinates['z_max'] += PongConsumer.groups_info[self.my_group]['sphere_direction'][2] * PongConsumer.groups_info[self.my_group]['sphere_speed']
-
 	async def main_loop(self):
 		while True:
 			await self.check_sphere_collision()
-
 			await self.moving_sphere()
-
-			await self.moving_sphere_bounding_box(PongConsumer.groups_info[self.my_group]['sphere_bounding_box'])
-
 			await PongConsumer.channel_layer.group_send(
 			    PongConsumer.channel_group,
 			    {
@@ -272,15 +272,6 @@ class PongConsumer(AsyncWebsocketConsumer):
 			    }
 			)
 			await asyncio.sleep(0.01)
-
-	async def send_game_over(self, event):
-		users = event['users']
-		winner = event['winner']
-		if self.channel_name in users:
-			await self.send(text_data=json.dumps({
-				'type': 'game_over',
-				'winner': winner,
-			}))
 
 	async def send_scores(self, event):
 		users = event['users']
@@ -315,9 +306,13 @@ class PongConsumer(AsyncWebsocketConsumer):
 
 	async def send_game_over_disconnected(self, event):
 		users = event['users']
+		detail = event['detail']
+		winner = event['winner']
 		if self.channel_name in users:
 			await self.send(text_data=json.dumps({
-				'type': 'game_over_disconnected'
+				'type': 'game_over_disconnected',
+				'winner': winner,
+				'detail': detail
 			}))
 
 	async def connect(self):
@@ -337,23 +332,29 @@ class PongConsumer(AsyncWebsocketConsumer):
 				'player_num': 2
 			}))
 			await self.initialize_group()
-			asyncio.create_task(self.main_loop())
+			PongConsumer.groups_info[self.my_group]['task'] = asyncio.create_task(self.main_loop())
 
 	async def disconnect(self, close_code):
+		if self.my_group in PongConsumer.groups:
+			PongConsumer.groups_info[self.my_group]['task'].cancel()
 		if self.channel_name in PongConsumer.groups[self.my_group]:
 			PongConsumer.groups[self.my_group].remove(self.channel_name)
-		
 		if (self.my_group in PongConsumer.groups_info and 
-			PongConsumer.groups_info[self.my_group]['player_1_score'] < 10 and 
-			PongConsumer.groups_info[self.my_group]['player_2_score'] < 10):
+			PongConsumer.groups_info[self.my_group]['player_1_score'] < PongConsumer.end_score and 
+			PongConsumer.groups_info[self.my_group]['player_2_score'] < PongConsumer.end_score):
 			await self.channel_layer.group_send(
 				PongConsumer.channel_group,
 				{
 					'type': 'send_game_over_disconnected',
 					'users': PongConsumer.groups[self.my_group],
+					'winner': 3 - self.player_num,
+					'detail': 'game_over_disconnected'
 				}
 			)
 		await PongConsumer.channel_layer.group_discard(PongConsumer.channel_group, self.channel_name)
+		if self.my_group in PongConsumer.groups and len(PongConsumer.groups[self.my_group]) == 0:
+			del PongConsumer.groups[self.my_group]
+			del PongConsumer.groups_info[self.my_group]
 		
 	async def handle_keydown(self, data):
 		player_key = f"p{data['player_num']}_bar"
